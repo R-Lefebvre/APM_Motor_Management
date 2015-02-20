@@ -4,7 +4,7 @@
 
 /*
 APM_Motor_Management V0.1
-Lead author:	Robert Lefebvre
+Lead author:    Robert Lefebvre
 
 This firmware is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
@@ -35,131 +35,155 @@ requires input of number of poles, and gear ratio.
 
 */
 
-#define ENABLED 				1
-#define DISABLED 				0
+#define ENABLED                 1
+#define DISABLED                0
 
-#define Serial_Debug 			ENABLED
+#define Serial_Debug            ENABLED
 
-#define BoardLED 				13
-#define RPM_Input_1 			2
-#define Direct_Measurement 		1
-#define Motor_Measurement 		2
-#define Measurement_Type 		Direct_Measurement
-#define Motor_Poles 			2
-#define Gear_Ratio 				2
-#define PulsesPerRevolution 	1
+#define BoardLED                11
+#define RPM_INPUT_1             0
+#define RPM_INPUT_2             1
+#define TRIGGER_PPR_DEFAULT     1
 
+unsigned long fast_loop_timer = 0;              // Time in microseconds of 1000hz control loop
+unsigned long last_fast_loop_timer = 0;         // Time in microseconds of the previous fast loop
+unsigned long fiftyhz_loop_timer = 0;           // Time in milliseconds of 50hz control loop
+unsigned long last_fiftyhz_loop_timer = 0;      // Time in milliseconds of the previous loop, used to calculate dt
+unsigned int fiftyhz_dt= 0 ;                    // Time since the last 50 Hz loop
+unsigned long tenhz_loop_timer = 0;             // Time in milliseconds of the 10hz control loop
+unsigned long onehz_loop_timer = 0;             // Time in milliseconds of the 1hz control loop
 
-float rpm_measured = 0.0;						// Latest measured RPM value
-volatile unsigned long trigger_time = 0;		// Trigger time of latest interrupt
-volatile unsigned long trigger_time_old = 0;	// Trigger time of last interrupt
-unsigned long last_calc_time = 0;				// Trigger time of last speed calculated
-unsigned long timing = 0;						// Timing of last rotation
-unsigned long timing_old = 0;					// Old rotation timing
-bool timing_overflow_skip = true;				// Bit used to signal micros() timer overflowed
-												// We set true to start so that we will throw out
-												// the first data point collected after booting
-												// because it is flaky.
+class Tachometer {
 
+    float calc_rpm();
 
+    volatile unsigned long trigger_time;        // Trigger time of latest interrupt
+    unsigned int pulses_per_revolution;
+    volatile unsigned long trigger_time_old;    // Trigger time of last interrupt
+    unsigned long trigger_last_calc_time;       // Trigger time of last speed calculated
+    unsigned long trigger_timing;               // timing of last rotation
+    unsigned long trigger_timing_old;           // Old rotation timing
+    unsigned int trigger_pulses_per_rev;
+    float rpm_measured;                         // Latest measured RPM value for input
+    bool timing_overflow_trigger_skip;          // Bit used to signal micros() timer overflowed
+                                                // We set true to start so that we will throw out
+                                                // the first data point collected after booting
+                                                // because it is flaky.
 
-unsigned long fast_loop_timer = 0;				// Time in microseconds of 1000hz control loop
-unsigned long last_fast_loop_timer = 0;			// Time in microseconds of the previous fast loop
-unsigned long fiftyhz_loop_timer = 0;			// Time in milliseconds of 50hz control loop
-unsigned long last_fiftyhz_loop_timer = 0;		// Time in milliseconds of the previous loop, used to calculate dt
-unsigned int fiftyhz_dt= 0 ;					// Time since the last 50 Hz loop
-unsigned long tenhz_loop_timer = 0;				// Time in milliseconds of the 10hz control loop
-unsigned long onehz_loop_timer = 0;				// Time in milliseconds of the 1hz control loop
-unsigned int rotation_time;						// Time in microseconds for one rotation of rotor
+    public:
+        
+        Tachometer(int,int);                            // Constructor
+        void check_pulses(unsigned long);
+        void timer_overflow_handler();
+        void interrupt_function();
+        float get_rpm(){return rpm_measured;}        
+};
+
+Tachometer::Tachometer(int pin_assignment, int ppr){
+    pulses_per_revolution = ppr;
+    pinMode(pin_assignment, INPUT_PULLUP);
+}
+
+void Tachometer::interrupt_function(){
+    trigger_time = micros();
+}    
+
+float Tachometer::calc_rpm(){
+    return (rpm_measured + (60000000.0/(float)trigger_timing)/pulses_per_revolution)/2 ;        //Simple Low-pass Filter
+}
+
+void Tachometer::timer_overflow_handler(){
+    //we will throw out whatever data we have
+    trigger_time_old = 0;
+    trigger_time = 0;
+
+    //and the next capture too
+    timing_overflow_trigger_skip == true;
+}
+
+void Tachometer::check_pulses(unsigned long fl_timer){
+    if ( (trigger_time_old + (3 * trigger_timing)) < fl_timer ){        // We have lost more than 1 expected pulse, start to decay the measured RPM
+        rpm_measured -= 0.25;
+        if (rpm_measured <0){
+            rpm_measured = 0;
+        }
+    }
+
+    if (trigger_time_old != trigger_time){                              // We have new trigger_1_timing data to consume
+        if (!timing_overflow_trigger_skip){                             // If micros has not overflowed, we will calculate trigger_1_timing based on this data
+            trigger_timing_old = trigger_timing;
+            trigger_timing = trigger_time - trigger_time_old;
+            rpm_measured = calc_rpm();
+        } else {
+            timing_overflow_trigger_skip = false;                       // If micros has overflowed, reset the skip bit since we have thrown away this bad data
+        }
+        trigger_time_old = trigger_time;                                // In either case, we need to do this so we can look for new data		
+    }
+}
+
+Tachometer tach1(RPM_INPUT_1, TRIGGER_PPR_DEFAULT);
+Tachometer tach2(RPM_INPUT_2, TRIGGER_PPR_DEFAULT);
 
 void setup(){
-   pinMode(RPM_Input_1, INPUT_PULLUP);
-   attachInterrupt(0, rpm_fun, RISING);
-   pinMode(BoardLED, OUTPUT);  
+
+    attachInterrupt(RPM_INPUT_1, interrupt_1_function, RISING);
+    attachInterrupt(RPM_INPUT_2, interrupt_2_function, RISING);
+
 #if Serial_Debug == ENABLED
-   serial_debug_init();
+    serial_debug_init();
 #endif
 }
 
 void loop(){
 
-unsigned long timer = millis();						// Time in milliseconds of current loop
+unsigned long timer = millis();                         // Time in milliseconds of current loop
 
-	if (( micros() - fast_loop_timer) >= 1000){	
-		fast_loop_timer = micros();
-		if (!micros_overflow()){
-			fastloop();
-		} else {
-			trigger_time_old = 0;					//we will throw out whatever data we have
-			trigger_time = 0;
-			timing_overflow_skip == true;			//and the next one
-		}
-		last_fast_loop_timer = fast_loop_timer;
-	}	
-	
-	if ((timer - fiftyhz_loop_timer) >= 20) {	
-		last_fiftyhz_loop_timer = fiftyhz_loop_timer;
-		fiftyhz_loop_timer = timer;
-		fiftyhz_dt = last_fiftyhz_loop_timer - fiftyhz_loop_timer;
-		mediumloop();	
-	}
-	
-	if ((timer - tenhz_loop_timer) >= 10) {	
-		tenhz_loop_timer = timer;
-		slowloop();	
-	}
-	
-	if ((timer - onehz_loop_timer) >= 1000) {	
-		onehz_loop_timer = timer;
-		superslowloop();	
-	}	
+    if (( micros() - fast_loop_timer) >= 1000){
+        fast_loop_timer = micros();
+        if (!micros_overflow()){
+            fastloop();
+        } else {
+            tach1.timer_overflow_handler();
+            tach2.timer_overflow_handler();
+        }
+        last_fast_loop_timer = fast_loop_timer;
+    }
+
+    if ((timer - fiftyhz_loop_timer) >= 20) {
+        last_fiftyhz_loop_timer = fiftyhz_loop_timer;
+        fiftyhz_loop_timer = timer;
+        fiftyhz_dt = last_fiftyhz_loop_timer - fiftyhz_loop_timer;
+        mediumloop();
+    }
+    
+    if ((timer - tenhz_loop_timer) >= 10) {
+        tenhz_loop_timer = timer;
+        slowloop();
+    }
+
+    if ((timer - onehz_loop_timer) >= 1000) {
+        onehz_loop_timer = timer;
+        superslowloop();
+    }
 }
 
-void rpm_fun(){							//Each pulse, this interrupt function is run	
-	trigger_time = micros();
+void fastloop(){            //1000hz stuff goes here
+    tach1.check_pulses(fast_loop_timer);
+    tach2.check_pulses(fast_loop_timer);   
 }
 
-void fastloop(){			//1000hz stuff goes here	
-	if ( (trigger_time_old + (3 * timing)) < fast_loop_timer ){			// We have lost more than 1 expected pulse, start to decay the measured RPM
-		rpm_measured -= 0.25;
-		if (rpm_measured <0){
-			rpm_measured = 0;
-		}
-	}
-	
-	if (trigger_time_old != trigger_time){				// We have new timing data to consume
-		if (!timing_overflow_skip){						// If micros has not overflowed, we will calculate timing based on this data
-			timing_old = timing;
-			timing = trigger_time - trigger_time_old;
-			rpm_measured = calc_rpm();
-			digitalWrite(BoardLED, HIGH);
-		} else {									
-			timing_overflow_skip = false;				// If micros has overflowed, reset the skip bit since we have thrown away this bad data
-		}
-		trigger_time_old = trigger_time;				// In either case, we need to do this so we can look for new data		
-	}	
+void mediumloop(){                  //50hz stuff goes here
+    digitalWrite(BoardLED, LOW);
 }
 
-void mediumloop(){			//50hz stuff goes here
-	digitalWrite(BoardLED, LOW);	
-}
-
-void slowloop(){			//10hz stuff goes here
+void slowloop(){                    //10hz stuff goes here
 
 }
 
-void superslowloop(){		//1hz stuff goes here
+void superslowloop(){               //1hz stuff goes here
 #if Serial_Debug == ENABLED
-	do_serial_debug();	
+    do_serial_debug();
 #endif
-}
-
-float calc_rpm(){
-#if Measurement_Type == Direct_Measurement
-	return (rpm_measured + (60000000.0/(float)timing)/PulsesPerRevolution)/2 ;				//Simple Low-pass Filter
-#elif Measurement_Type == Motor_Measurement
-	return (rpm_measured + (((60000000.0/(float)timing)/Gear_Ratio)/(Motor_Poles/2))/2;
-#endif	
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -171,11 +195,11 @@ ignore any data collected during the period.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool micros_overflow(){
-	if (micros() > last_fast_loop_timer) {			// Micros() have not overflowed because it has incremented since last fast loop
-		return false;
-	} else {
-		return true;
-	}
+    if (micros() > last_fast_loop_timer) {              // Micros() have not overflowed because it has incremented since last fast loop
+        return false;
+    } else {
+        return true;
+    }
 }
 
 #if Serial_Debug == ENABLED
@@ -185,13 +209,22 @@ void serial_debug_init(){
     Serial.println("Tachometer Test");
     Serial.print("Startup Micros:");
     Serial.println(micros());
-    Serial.print("Startup Timing:");
-    Serial.println(timing);
 }
 
-void do_serial_debug(){	
-	Serial.print ("RPM =");
-	Serial.println(rpm_measured);
+void do_serial_debug(){
+    Serial.print ("RPM 1 =");
+    Serial.println(tach1.get_rpm());
+    Serial.print ("RPM 2 =");
+    Serial.println(tach2.get_rpm());
+}
+
+// Wrappers for ISR functions
+void interrupt_1_function(){
+    tach1.interrupt_function();
+}
+
+void interrupt_2_function(){
+    tach2.interrupt_function();
 }
 
 #endif
