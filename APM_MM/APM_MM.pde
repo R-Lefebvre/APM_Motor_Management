@@ -35,6 +35,8 @@ requires input of number of poles, and gear ratio.
 
 */
 
+#include <Tachometer.h>         //Tachometer class definition
+
 #define ENABLED                 1
 #define DISABLED                0
 
@@ -52,74 +54,6 @@ unsigned long last_fiftyhz_loop_timer = 0;      // Time in milliseconds of the p
 unsigned int fiftyhz_dt= 0 ;                    // Time since the last 50 Hz loop
 unsigned long tenhz_loop_timer = 0;             // Time in milliseconds of the 10hz control loop
 unsigned long onehz_loop_timer = 0;             // Time in milliseconds of the 1hz control loop
-
-class Tachometer {
-
-    float calc_rpm();
-
-    volatile unsigned long trigger_time;        // Trigger time of latest interrupt
-    unsigned int pulses_per_revolution;
-    volatile unsigned long trigger_time_old;    // Trigger time of last interrupt
-    unsigned long trigger_last_calc_time;       // Trigger time of last speed calculated
-    unsigned long trigger_timing;               // timing of last rotation
-    unsigned long trigger_timing_old;           // Old rotation timing
-    unsigned int trigger_pulses_per_rev;
-    float rpm_measured;                         // Latest measured RPM value for input
-    bool timing_overflow_trigger_skip;          // Bit used to signal micros() timer overflowed
-                                                // We set true to start so that we will throw out
-                                                // the first data point collected after booting
-                                                // because it is flaky.
-
-    public:
-        
-        Tachometer(int,int);                            // Constructor
-        void check_pulses(unsigned long);
-        void timer_overflow_handler();
-        void interrupt_function();
-        float get_rpm(){return rpm_measured;}        
-};
-
-Tachometer::Tachometer(int pin_assignment, int ppr){
-    pulses_per_revolution = ppr;
-    pinMode(pin_assignment, INPUT_PULLUP);
-}
-
-void Tachometer::interrupt_function(){
-    trigger_time = micros();
-}    
-
-float Tachometer::calc_rpm(){
-    return (rpm_measured + (60000000.0/(float)trigger_timing)/pulses_per_revolution)/2 ;        //Simple Low-pass Filter
-}
-
-void Tachometer::timer_overflow_handler(){
-    //we will throw out whatever data we have
-    trigger_time_old = 0;
-    trigger_time = 0;
-
-    //and the next capture too
-    timing_overflow_trigger_skip == true;
-}
-
-void Tachometer::check_pulses(unsigned long fl_timer){
-    if ( (trigger_time_old + (3 * trigger_timing)) < fl_timer ){        // We have lost more than 1 expected pulse, start to decay the measured RPM
-        rpm_measured -= 0.25;
-        if (rpm_measured <0){
-            rpm_measured = 0;
-        }
-    }
-
-    if (trigger_time_old != trigger_time){                              // We have new trigger_1_timing data to consume
-        if (!timing_overflow_trigger_skip){                             // If micros has not overflowed, we will calculate trigger_1_timing based on this data
-            trigger_timing_old = trigger_timing;
-            trigger_timing = trigger_time - trigger_time_old;
-            rpm_measured = calc_rpm();
-        } else {
-            timing_overflow_trigger_skip = false;                       // If micros has overflowed, reset the skip bit since we have thrown away this bad data
-        }
-        trigger_time_old = trigger_time;                                // In either case, we need to do this so we can look for new data		
-    }
-}
 
 Tachometer tach1(RPM_INPUT_1, TRIGGER_PPR_DEFAULT);
 Tachometer tach2(RPM_INPUT_2, TRIGGER_PPR_DEFAULT);
