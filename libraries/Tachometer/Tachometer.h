@@ -32,7 +32,6 @@ class Tachometer {
         void check_pulses(unsigned long);
         void count_pulses();
         void timer_overflow_handler();
-        void (Tachometer::*inter_func)(void);
         void interrupt_function();
         float get_rpm();
 };
