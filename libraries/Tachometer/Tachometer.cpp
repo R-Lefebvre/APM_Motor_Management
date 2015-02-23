@@ -6,6 +6,9 @@ Tachometer::Tachometer(int pin_assignment, int ppr, int speed){
     tach_speed = speed;
     pinMode(pin_assignment, INPUT_PULLUP);
     trigger_counts = 0;
+    inter_func = &Tachometer::interrupt_function;
+    attachInterrupt(pin_assignment, (void (*)())inter_func, RISING);
+
     //trigger_count_accumulator[] = {0,0,0,0,0,0,0,0,0,0};
 }
 

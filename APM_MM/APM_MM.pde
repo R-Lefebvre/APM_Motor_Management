@@ -66,9 +66,6 @@ Tachometer tach2(RPM_INPUT_2, 3, HIGH_SPEED);
 
 void setup(){
 
-    attachInterrupt(RPM_INPUT_1, interrupt_1_function, RISING);
-    attachInterrupt(RPM_INPUT_2, interrupt_2_function, RISING);
-
 #if Serial_Debug == ENABLED
     serial_debug_init();
 #endif
@@ -165,19 +162,10 @@ void serial_debug_init(){
 }
 
 void do_serial_debug(){
-    Serial.print ("RPM 1 =");
+    Serial.print ("RPM 5 =");
     Serial.println(tach1.get_rpm());
     Serial.print ("RPM 2 =");
     Serial.println(tach2.get_rpm());
-}
-
-// Wrappers for ISR functions
-void interrupt_1_function(){
-    tach1.interrupt_function();
-}
-
-void interrupt_2_function(){
-    tach2.interrupt_function();
 }
 
 #endif
