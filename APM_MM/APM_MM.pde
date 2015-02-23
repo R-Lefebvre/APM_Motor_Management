@@ -40,6 +40,9 @@ requires input of number of poles, and gear ratio.
 #define ENABLED                 1
 #define DISABLED                0
 
+#define LOW_SPEED               0
+#define HIGH_SPEED              1
+
 #define Serial_Debug            ENABLED
 
 #define BoardLED                11
@@ -47,16 +50,19 @@ requires input of number of poles, and gear ratio.
 #define RPM_INPUT_2             1
 #define TRIGGER_PPR_DEFAULT     1
 
-unsigned long fast_loop_timer = 0;              // Time in microseconds of 1000hz control loop
-unsigned long last_fast_loop_timer = 0;         // Time in microseconds of the previous fast loop
-unsigned long fiftyhz_loop_timer = 0;           // Time in milliseconds of 50hz control loop
-unsigned long last_fiftyhz_loop_timer = 0;      // Time in milliseconds of the previous loop, used to calculate dt
-unsigned int fiftyhz_dt= 0 ;                    // Time since the last 50 Hz loop
-unsigned long tenhz_loop_timer = 0;             // Time in milliseconds of the 10hz control loop
-unsigned long onehz_loop_timer = 0;             // Time in milliseconds of the 1hz control loop
+unsigned long super_fast_loop_timer = 0;            // Time in microseconds of 1000hz control loop
+unsigned long last_super_fast_loop_timer = 0;       // Time in microseconds of the previous fast loop
+unsigned long fast_loop_timer = 0;                  // Time in milliseconds of 100hz control loop
+unsigned long last_fast_loop_timer = 0;             // Time in milliseconds of the previous loop, used to calculate dt
+unsigned int fast_loop_dt = 0;                      // Time since the last 100hz loop.
+unsigned long medium_loop_timer = 0;                // Time in milliseconds of 50hz control loop
+unsigned long last_medium_loop_timer = 0;           // Time in milliseconds of the previous loop, used to calculate dt
+unsigned int medium_loop_dt= 0 ;                    // Time since the last 50 Hz loop
+unsigned long slow_loop_timer = 0;                  // Time in milliseconds of the 10hz control loop
+unsigned long super_slow_loop_timer = 0;            // Time in milliseconds of the 1hz control loop
 
-Tachometer tach1(RPM_INPUT_1, TRIGGER_PPR_DEFAULT);
-Tachometer tach2(RPM_INPUT_2, TRIGGER_PPR_DEFAULT);
+Tachometer tach1(RPM_INPUT_1, TRIGGER_PPR_DEFAULT, LOW_SPEED);
+Tachometer tach2(RPM_INPUT_2, 3, HIGH_SPEED);
 
 void setup(){
 
@@ -72,42 +78,55 @@ void loop(){
 
 unsigned long timer = millis();                         // Time in milliseconds of current loop
 
-    if (( micros() - fast_loop_timer) >= 1000){
-        fast_loop_timer = micros();
+    if (( micros() - super_fast_loop_timer) >= 1000){
+        super_fast_loop_timer = micros();
         if (!micros_overflow()){
-            fastloop();
+            superfastloop();
         } else {
             tach1.timer_overflow_handler();
             tach2.timer_overflow_handler();
         }
-        last_fast_loop_timer = fast_loop_timer;
+        last_super_fast_loop_timer = super_fast_loop_timer;
     }
 
-    if ((timer - fiftyhz_loop_timer) >= 20) {
-        last_fiftyhz_loop_timer = fiftyhz_loop_timer;
-        fiftyhz_loop_timer = timer;
-        fiftyhz_dt = last_fiftyhz_loop_timer - fiftyhz_loop_timer;
+    if ((timer - fast_loop_timer) >= 10) {
+        last_fast_loop_timer = fast_loop_timer;
+        fast_loop_timer = timer;
+        fast_loop_dt = last_fast_loop_timer - fast_loop_timer;
+        fastloop();
+    }
+
+    if ((timer - medium_loop_timer) >= 20) {
+        last_medium_loop_timer = medium_loop_timer;
+        medium_loop_timer = timer;
+        medium_loop_dt = last_medium_loop_timer - medium_loop_timer;
         mediumloop();
     }
     
-    if ((timer - tenhz_loop_timer) >= 10) {
-        tenhz_loop_timer = timer;
+    if ((timer - slow_loop_timer) >= 100) {
+        slow_loop_timer = timer;
         slowloop();
     }
 
-    if ((timer - onehz_loop_timer) >= 1000) {
-        onehz_loop_timer = timer;
+    if ((timer - super_slow_loop_timer) >= 1000) {
+        super_slow_loop_timer = timer;
         superslowloop();
     }
 }
 
-void fastloop(){            //1000hz stuff goes here
-    tach1.check_pulses(fast_loop_timer);
-    tach2.check_pulses(fast_loop_timer);   
+void superfastloop(){            //1000hz stuff goes here
+    tach1.check_pulses(super_fast_loop_timer);
+    tach2.check_pulses(super_fast_loop_timer);   
+}
+
+void fastloop(){                    //100hz stuff goes here
+
+    tach1.count_pulses();
+    tach2.count_pulses();
 }
 
 void mediumloop(){                  //50hz stuff goes here
-    digitalWrite(BoardLED, LOW);
+
 }
 
 void slowloop(){                    //10hz stuff goes here
