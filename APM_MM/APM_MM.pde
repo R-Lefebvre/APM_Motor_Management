@@ -46,8 +46,10 @@ requires input of number of poles, and gear ratio.
 #define Serial_Debug            ENABLED
 
 #define BoardLED                13
-#define RPM_INPUT_1             0
-#define RPM_INPUT_2             1
+#define RPM_INPUT_1             6
+#define RPM_INPUT_2             7
+#define RPM_INPUT_3             8
+#define RPM_INPUT_4             9
 #define TRIGGER_PPR_DEFAULT     1
 
 bool LedBlinker = true;
@@ -64,13 +66,16 @@ unsigned long slow_loop_timer = 0;                  // Time in milliseconds of t
 unsigned long super_slow_loop_timer = 0;            // Time in milliseconds of the 1hz control loop
 
 Tachometer tach1(RPM_INPUT_1, TRIGGER_PPR_DEFAULT, LOW_SPEED);
-Tachometer tach2(RPM_INPUT_2, 3, HIGH_SPEED);
+Tachometer tach2(RPM_INPUT_2, TRIGGER_PPR_DEFAULT, LOW_SPEED);
+Tachometer tach3(RPM_INPUT_3, TRIGGER_PPR_DEFAULT, HIGH_SPEED);
+Tachometer tach4(RPM_INPUT_4, TRIGGER_PPR_DEFAULT, HIGH_SPEED);
 
 void setup(){
 
     attachInterrupt(RPM_INPUT_1, interrupt_1_function, RISING);
     attachInterrupt(RPM_INPUT_2, interrupt_2_function, RISING);
-
+    attachInterrupt(RPM_INPUT_3, interrupt_3_function, RISING);
+    attachInterrupt(RPM_INPUT_4, interrupt_4_function, RISING);
     pinMode(BoardLED, OUTPUT);
 
 #if Serial_Debug == ENABLED
@@ -119,14 +124,19 @@ unsigned long timer = millis();                         // Time in milliseconds 
 }
 
 void superfastloop(){            //1000hz stuff goes here
+
     tach1.check_pulses(super_fast_loop_timer);
-    tach2.check_pulses(super_fast_loop_timer);   
+    tach2.check_pulses(super_fast_loop_timer);
+    tach3.check_pulses(super_fast_loop_timer);
+    tach4.check_pulses(super_fast_loop_timer);
 }
 
 void fastloop(){                    //100hz stuff goes here
 
     tach1.count_pulses();
     tach2.count_pulses();
+    tach3.count_pulses();
+    tach4.count_pulses();
 }
 
 void mediumloop(){                  //50hz stuff goes here
@@ -178,10 +188,14 @@ void serial_debug_init(){
 }
 
 void do_serial_debug(){
-    Serial.print ("RPM 1 =");
-    Serial.println(tach1.get_rpm());
-    Serial.print ("RPM 2 =");
-    Serial.println(tach2.get_rpm());
+    Serial.print ("PPM 1:");
+    Serial.print(tach1.get_rpm());
+    Serial.print (" 2:");
+    Serial.print(tach2.get_rpm());
+    Serial.print (" 3:");
+    Serial.print(tach3.get_rpm());
+    Serial.print (" 4:");
+    Serial.println(tach4.get_rpm());
 }
 
 // Wrappers for ISR functions
@@ -191,6 +205,14 @@ void interrupt_1_function(){
 
 void interrupt_2_function(){
     tach2.interrupt_function();
+}
+
+void interrupt_3_function(){
+    tach3.interrupt_function();
+}
+
+void interrupt_4_function(){
+    tach4.interrupt_function();
 }
 
 #endif
