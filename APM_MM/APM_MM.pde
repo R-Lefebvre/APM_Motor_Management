@@ -45,10 +45,12 @@ requires input of number of poles, and gear ratio.
 
 #define Serial_Debug            ENABLED
 
-#define BoardLED                11
+#define BoardLED                13
 #define RPM_INPUT_1             0
 #define RPM_INPUT_2             1
 #define TRIGGER_PPR_DEFAULT     1
+
+bool LedBlinker = true;
 
 unsigned long super_fast_loop_timer = 0;            // Time in microseconds of 1000hz control loop
 unsigned long last_super_fast_loop_timer = 0;       // Time in microseconds of the previous fast loop
@@ -68,6 +70,8 @@ void setup(){
 
     attachInterrupt(RPM_INPUT_1, interrupt_1_function, RISING);
     attachInterrupt(RPM_INPUT_2, interrupt_2_function, RISING);
+
+    pinMode(BoardLED, OUTPUT);
 
 #if Serial_Debug == ENABLED
     serial_debug_init();
@@ -134,6 +138,15 @@ void slowloop(){                    //10hz stuff goes here
 }
 
 void superslowloop(){               //1hz stuff goes here
+
+    if (LedBlinker){
+        digitalWrite(BoardLED, HIGH);   // sets the LED on
+        LedBlinker = false;
+    } else if (!LedBlinker){
+        digitalWrite(BoardLED, LOW);
+        LedBlinker = true;
+    }
+
 #if Serial_Debug == ENABLED
     do_serial_debug();
 #endif
