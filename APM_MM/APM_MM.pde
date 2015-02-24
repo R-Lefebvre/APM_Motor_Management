@@ -1,6 +1,7 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
 #define THISFIRMWARE "APM_Motor_Management V0.1"
+#include <i2c_t3.h>
 
 /*
 APM_Motor_Management V0.1
@@ -52,6 +53,12 @@ requires input of number of poles, and gear ratio.
 #define RPM_INPUT_4             9
 #define TRIGGER_PPR_DEFAULT     1
 
+#define MM_I2C_SLAVE_ADDRESS    0x36
+#define REQUEST_PPM_1           0x20
+#define REQUEST_PPM_2           0x21
+#define REQUEST_PPM_3           0x22
+#define REQUEST_PPM_4           0x23
+
 bool LedBlinker = true;
 
 unsigned long super_fast_loop_timer = 0;            // Time in microseconds of 1000hz control loop
@@ -70,6 +77,12 @@ Tachometer tach2(RPM_INPUT_2, TRIGGER_PPR_DEFAULT, LOW_SPEED);
 Tachometer tach3(RPM_INPUT_3, TRIGGER_PPR_DEFAULT, HIGH_SPEED);
 Tachometer tach4(RPM_INPUT_4, TRIGGER_PPR_DEFAULT, HIGH_SPEED);
 
+union RPM_tag {byte RPM_b[4]; float RPM_fval;} PPM_Union; 
+
+// Function prototypes
+void receiveEvent(size_t len);
+void requestEvent(void);
+
 void setup(){
 
     attachInterrupt(RPM_INPUT_1, interrupt_1_function, RISING);
@@ -77,6 +90,10 @@ void setup(){
     attachInterrupt(RPM_INPUT_3, interrupt_3_function, RISING);
     attachInterrupt(RPM_INPUT_4, interrupt_4_function, RISING);
     pinMode(BoardLED, OUTPUT);
+
+    Wire.begin(5);
+    Wire.onRequest(requestEvent);
+    Wire.onReceive(receiveEvent);
 
 #if Serial_Debug == ENABLED
     serial_debug_init();
@@ -176,6 +193,23 @@ bool micros_overflow(){
     } else {
         return true;
     }
+}
+
+void requestEvent()
+{
+    PPM_Union.RPM_fval = tach1.get_rpm();
+    for (int i = 0; i < 4; i++){
+        Wire.write(PPM_Union.RPM_b[i]);
+    }
+}
+
+void receiveEvent(size_t len)
+{
+  
+    while(Wire.available()){
+        int c = Wire.read();
+    }
+
 }
 
 #if Serial_Debug == ENABLED
