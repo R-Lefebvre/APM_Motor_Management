@@ -77,8 +77,11 @@ Tachometer tach2(RPM_INPUT_2, TRIGGER_PPR_DEFAULT, LOW_SPEED);
 Tachometer tach3(RPM_INPUT_3, TRIGGER_PPR_DEFAULT, HIGH_SPEED);
 Tachometer tach4(RPM_INPUT_4, TRIGGER_PPR_DEFAULT, HIGH_SPEED);
 
-union RPM_tag {byte RPM_b[4]; float RPM_fval;} PPM_Union;
-volatile byte I2C_Reg_Req_Num;
+union RPM_tag {byte RPM_b[16]; float RPM_fval[4];} PPM_Union;
+volatile byte I2C_Reg_Req_Num = 0;
+byte info_index = 0;
+byte register_index = 0;
+byte register_index_stop = 0;
 
 // Function prototypes
 void receiveEvent(size_t len);
@@ -92,7 +95,7 @@ void setup(){
     attachInterrupt(RPM_INPUT_4, interrupt_4_function, RISING);
     pinMode(BoardLED, OUTPUT);
 
-    Wire.begin(5);
+    Wire.begin(MM_I2C_SLAVE_ADDRESS);
     Wire.onRequest(requestEvent);
     Wire.onReceive(receiveEvent);
 
@@ -159,6 +162,10 @@ void fastloop(){                    //100hz stuff goes here
 
 void mediumloop(){                  //50hz stuff goes here
 
+    PPM_Union.RPM_fval[0] = tach1.get_rpm();
+    PPM_Union.RPM_fval[1] = tach2.get_rpm();
+    PPM_Union.RPM_fval[2] = tach3.get_rpm();
+    PPM_Union.RPM_fval[3] = tach4.get_rpm();
 }
 
 void slowloop(){                    //10hz stuff goes here
@@ -201,29 +208,17 @@ void receiveEvent(size_t len)
     while(Wire.available()){
         I2C_Reg_Req_Num = Wire.read();
     }
+
+    info_index = I2C_Reg_Req_Num - 0x20;
+    register_index = info_index*4;
+    register_index_stop = register_index + 4;
 }
 
 void requestEvent()
 {
-    switch (I2C_Reg_Req_Num){
-        case 0x20:
-            PPM_Union.RPM_fval = tach1.get_rpm();
-            break;
-        case 0x21:
-            PPM_Union.RPM_fval = tach2.get_rpm();
-            break;
-        case 0x22:
-            PPM_Union.RPM_fval = tach3.get_rpm();
-            break;
-        case 0x23:
-            PPM_Union.RPM_fval = tach4.get_rpm();
-            break;
-        default:
-            PPM_Union.RPM_fval = 0.0;
-    }
-
-    for (int i = 0; i < 4; i++){
-        Wire.write(PPM_Union.RPM_b[i]);
+     while(register_index < register_index_stop){
+        Wire.write(PPM_Union.RPM_b[register_index]);
+        register_index++;
     }
 }
 
@@ -238,13 +233,13 @@ void serial_debug_init(){
 
 void do_serial_debug(){
     Serial.print ("PPM 1:");
-    Serial.print(tach1.get_rpm());
+    Serial.print(PPM_Union.RPM_fval[0]);
     Serial.print (" 2:");
-    Serial.print(tach2.get_rpm());
+    Serial.print(PPM_Union.RPM_fval[1]);
     Serial.print (" 3:");
-    Serial.print(tach3.get_rpm());
+    Serial.print(PPM_Union.RPM_fval[2]);
     Serial.print (" 4:");
-    Serial.println(tach4.get_rpm());
+    Serial.println(PPM_Union.RPM_fval[3]);
 }
 
 // Wrappers for ISR functions
