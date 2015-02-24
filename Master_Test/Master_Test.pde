@@ -7,54 +7,64 @@
 #define REQUEST_PPM_3           0x22
 #define REQUEST_PPM_4           0x23
 
-float PPM;
-union PPM_tag {byte PPM_b[4]; float PPM_fval;} PPM_Union;    
+bool have_I2C_data = false;                                 // flag used to signal we have data back from I2C
+byte I2C_data_request = 0;                                  // indicates which piece of data we are seeking currently
+int I2C_Reg_Num = 0;                                        // register of I2C Slave containing information we are seeking
+float PPM = 0.0;                                            // PPM data returned from I2C Slave
+union PPM_tag {byte PPM_b[4]; float PPM_fval;} PPM_Union;   // Union to combine I2C bytes into float
 
 void setup()
 {
-  Serial.begin(9600);
-  Wire.begin();
+    Serial.begin(57600);
+    Wire.begin();
+    delay(2000);
 }
 
 void loop()
 {
-    for (int i = 1; i < 5; i++){
-        request_data(i);
-        Serial.print ("PPM ");
-        Serial.print (i);
+    if (have_I2C_data){
+        Serial.print (I2C_data_request);
         Serial.print (": ");
         Serial.print (PPM);
         Serial.print (" ");
+        I2C_data_request++;
+        if (I2C_data_request > 4){
+            I2C_data_request = 0;
+        }
+        have_I2C_data = false;
+    } else {
+        switch (I2C_data_request){
+            case 1:
+                I2C_Reg_Num = REQUEST_PPM_1;
+                break;
+            case 2:
+                I2C_Reg_Num = REQUEST_PPM_2;
+                break;
+            case 3:
+                I2C_Reg_Num = REQUEST_PPM_3;
+                break;
+            case 4:
+                I2C_Reg_Num = REQUEST_PPM_4;
+                break;
+            default:
+                Serial.println (" ");  
+                delay(20);  
+                Serial.print ("PPM ");
+                I2C_data_request = 1;
+                return;
+        }
+        request_I2C_data();
     }
-    Serial.println (" ");    
-    delay(1000);
 }
 
-void request_data(int ppm_num){
-    int I2C_Reg_Num;
-    switch (ppm_num){
-        case 1:
-            I2C_Reg_Num = REQUEST_PPM_1;
-            break;
-        case 2:
-            I2C_Reg_Num = REQUEST_PPM_2;
-            break;
-        case 3:
-            I2C_Reg_Num = REQUEST_PPM_3;
-            break;
-        case 4:
-            I2C_Reg_Num = REQUEST_PPM_4;
-            break;
-        default:
-            I2C_Reg_Num = 0;
-    }
-    Wire.beginTransmission(5);
+void request_I2C_data(){
+    Wire.beginTransmission(MM_I2C_SLAVE_ADDRESS);
     Wire.write(I2C_Reg_Num);
-    Wire.requestFrom(5,4);
+    Wire.endTransmission();
+    Wire.requestFrom(MM_I2C_SLAVE_ADDRESS,4);
     for (int i = 0; i < 4; i++){
         PPM_Union.PPM_b[i] = Wire.read();          // receive a byte as character
     }
     PPM = PPM_Union.PPM_fval;
-    Wire.endTransmission();
-
+    have_I2C_data = true;
 }
