@@ -77,7 +77,8 @@ Tachometer tach2(RPM_INPUT_2, TRIGGER_PPR_DEFAULT, LOW_SPEED);
 Tachometer tach3(RPM_INPUT_3, TRIGGER_PPR_DEFAULT, HIGH_SPEED);
 Tachometer tach4(RPM_INPUT_4, TRIGGER_PPR_DEFAULT, HIGH_SPEED);
 
-union RPM_tag {byte RPM_b[4]; float RPM_fval;} PPM_Union; 
+union RPM_tag {byte RPM_b[4]; float RPM_fval;} PPM_Union;
+volatile byte I2C_Reg_Req_Num;
 
 // Function prototypes
 void receiveEvent(size_t len);
@@ -195,21 +196,35 @@ bool micros_overflow(){
     }
 }
 
-void requestEvent()
+void receiveEvent(size_t len)
 {
-    PPM_Union.RPM_fval = tach1.get_rpm();
-    for (int i = 0; i < 4; i++){
-        Wire.write(PPM_Union.RPM_b[i]);
+    while(Wire.available()){
+        I2C_Reg_Req_Num = Wire.read();
     }
 }
 
-void receiveEvent(size_t len)
+void requestEvent()
 {
-  
-    while(Wire.available()){
-        int c = Wire.read();
+    switch (I2C_Reg_Req_Num){
+        case 0x20:
+            PPM_Union.RPM_fval = tach1.get_rpm();
+            break;
+        case 0x21:
+            PPM_Union.RPM_fval = tach2.get_rpm();
+            break;
+        case 0x22:
+            PPM_Union.RPM_fval = tach3.get_rpm();
+            break;
+        case 0x23:
+            PPM_Union.RPM_fval = tach4.get_rpm();
+            break;
+        default:
+            PPM_Union.RPM_fval = 0.0;
     }
 
+    for (int i = 0; i < 4; i++){
+        Wire.write(PPM_Union.RPM_b[i]);
+    }
 }
 
 #if Serial_Debug == ENABLED
