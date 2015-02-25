@@ -4,7 +4,7 @@
 #define ENABLED                 1
 #define DISABLED                0
 
-#define SERIAL_DEBUG            DISABLED
+#define SERIAL_DEBUG            ENABLED
 
 #define D_BUFF_PPM_1            0
 #define D_BUFF_PPM_2            1
@@ -24,6 +24,10 @@
 #define REQUEST_TEMP_1          0x24
 #define REQUEST_TEMP_2          0x25
 
+#define TEMP_1_SENSOR_ZERO      0
+#define TEMP_2_SENSOR_ZERO      0.5
+#define TEMP_1_SENSOR_SCALE     0.010
+#define TEMP_2_SENSOR_SCALE     0.010
 
 #define PULSES_PER_REV          3
 
@@ -80,9 +84,9 @@ void get_data_all_words(){
         Serial.print (" 4:");
         Serial.print (D_Buff_Union.D_Buff_float[D_BUFF_PPM_4]/PULSES_PER_REV);
         Serial.print (" Temp 1:");
-        Serial.print (D_Buff_Union.D_Buff_float[D_BUFF_TEMP_1]);
+        Serial.print ((D_Buff_Union.D_Buff_float[D_BUFF_TEMP_1]-TEMP_1_SENSOR_ZERO)/TEMP_1_SENSOR_SCALE);
         Serial.print (" Temp 2:");
-        Serial.print (D_Buff_Union.D_Buff_float[D_BUFF_TEMP_2]);
+        Serial.print ((D_Buff_Union.D_Buff_float[D_BUFF_TEMP_2]-TEMP_2_SENSOR_ZERO)/TEMP_2_SENSOR_SCALE);
 #endif // SERIAL_DEBUG
         have_I2C_data = false;
     } else {
