@@ -1,7 +1,7 @@
 #include <Tachometer.h>
 #include <Arduino.h>
 
-Tachometer::Tachometer(int pin_assignment, int ppr, int speed){
+Tachometer::Tachometer(uint16_t pin_assignment, uint16_t ppr, uint16_t speed){
     pulses_per_revolution = ppr;
     tach_speed = speed;
     pinMode(pin_assignment, INPUT_PULLUP);
@@ -20,8 +20,8 @@ float Tachometer::calc_rpm_slow(){
 }
 
 float Tachometer::calc_rpm_fast(){
-    int pulse_total = 0;
-    for (int i = 0; i < 10; i++){
+    uint16_t pulse_total = 0;
+    for (uint8_t i = 0; i < 10; i++){
         pulse_total += trigger_count_accumulator[i];
     }
     return pulse_total*600/pulses_per_revolution;
@@ -36,7 +36,7 @@ void Tachometer::timer_overflow_handler(){
     timing_overflow_trigger_skip = true;
 }
 
-void Tachometer::check_pulses(unsigned long fl_timer){
+void Tachometer::check_pulses(uint32_t fl_timer){
 
     if (tach_speed == TACH_HIGH_SPEED){
         return;
@@ -63,7 +63,7 @@ void Tachometer::check_pulses(unsigned long fl_timer){
 
 void Tachometer::count_pulses(){
 
-    for (int i = 9; i > 0; i--){
+    for (uint8_t i = 9; i > 0; i--){
         trigger_count_accumulator[i] = trigger_count_accumulator[i-1];
     }
     trigger_count_accumulator[0] = trigger_counts;

@@ -4,7 +4,7 @@
 #define ENABLED                 1
 #define DISABLED                0
 
-#define SERIAL_DEBUG            DISABLED
+#define SERIAL_DEBUG            ENABLED
 
 #define D_BUFF_PPM_1            0
 #define D_BUFF_PPM_2            1
@@ -31,17 +31,17 @@
 
 #define PULSES_PER_REV          3
 
-bool    get_single_words = DISABLED;
-bool    have_I2C_data = false;                                  // flag used to signal we have data back from I2C
-byte    I2C_data_request = 0;                                   // indicates which piece of data we are seeking currently
-int     I2C_Reg_Num = 0;                                        // register of I2C Slave containing information we are seeking
-int     num_bytes_I2C = 0;                                      // Number of bytes to request from I2C
+bool        get_single_words = DISABLED;
+bool        have_I2C_data = false;                                  // flag used to signal we have data back from I2C
+uint8_t     I2C_data_request = 0;                                   // indicates which piece of data we are seeking currently
+uint16_t    I2C_Reg_Num = 0;                                        // register of I2C Slave containing information we are seeking
+uint16_t    num_bytes_I2C = 0;                                      // Number of bytes to request from I2C
 
 // Data returned from I2C Slave
-union D_Buff {byte D_Buff_byte[NUM_FLOATS * BYTES_PER_FLOAT]; float D_Buff_float[NUM_FLOATS];} D_Buff_Union;
+union D_Buff {uint8_t D_Buff_byte[NUM_FLOATS * BYTES_PER_FLOAT]; float D_Buff_float[NUM_FLOATS];} D_Buff_Union;
 
-int last_micros = 0;
-int elapsed_micros =0;
+uint16_t last_micros = 0;
+uint16_t elapsed_micros =0;
 
 void setup()
 {
@@ -66,7 +66,7 @@ void request_I2C_data(){
     Wire.write(num_bytes_I2C);
     Wire.endTransmission();
     Wire.requestFrom(MM_I2C_SLAVE_ADDRESS,num_bytes_I2C);
-    for (int i = 0; i < num_bytes_I2C; i++){
+    for (uint16_t i = 0; i < num_bytes_I2C; i++){
         D_Buff_Union.D_Buff_byte[i] = Wire.read();                   // receive a byte as character
     }
     have_I2C_data = true;

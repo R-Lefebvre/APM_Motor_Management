@@ -77,16 +77,16 @@ requires input of number of poles, and gear ratio.
 
 bool LedBlinker = true;
 
-unsigned long super_fast_loop_timer = 0;            // Time in microseconds of 1000hz control loop
-unsigned long last_super_fast_loop_timer = 0;       // Time in microseconds of the previous fast loop
-unsigned long fast_loop_timer = 0;                  // Time in milliseconds of 100hz control loop
-unsigned long last_fast_loop_timer = 0;             // Time in milliseconds of the previous loop, used to calculate dt
-unsigned int fast_loop_dt = 0;                      // Time since the last 100hz loop.
-unsigned long medium_loop_timer = 0;                // Time in milliseconds of 50hz control loop
-unsigned long last_medium_loop_timer = 0;           // Time in milliseconds of the previous loop, used to calculate dt
-unsigned int medium_loop_dt= 0 ;                    // Time since the last 50 Hz loop
-unsigned long slow_loop_timer = 0;                  // Time in milliseconds of the 10hz control loop
-unsigned long super_slow_loop_timer = 0;            // Time in milliseconds of the 1hz control loop
+uint32_t    super_fast_loop_timer = 0;          // Time in microseconds of 1000hz control loop
+uint32_t    last_super_fast_loop_timer = 0;     // Time in microseconds of the previous fast loop
+uint32_t    fast_loop_timer = 0;                // Time in milliseconds of 100hz control loop
+uint32_t    last_fast_loop_timer = 0;           // Time in milliseconds of the previous loop, used to calculate dt
+uint8_t     fast_loop_dt = 0;                   // Time since the last 100hz loop.
+uint32_t    medium_loop_timer = 0;              // Time in milliseconds of 50hz control loop
+uint32_t    last_medium_loop_timer = 0;         // Time in milliseconds of the previous loop, used to calculate dt
+uint8_t     medium_loop_dt= 0 ;                 // Time since the last 50 Hz loop
+uint32_t    slow_loop_timer = 0;                // Time in milliseconds of the 10hz control loop
+uint32_t    super_slow_loop_timer = 0;          // Time in milliseconds of the 1hz control loop
 
 Tachometer tach1(RPM_INPUT_1, TRIGGER_PPR_DEFAULT, LOW_SPEED);
 Tachometer tach2(RPM_INPUT_2, TRIGGER_PPR_DEFAULT, LOW_SPEED);
@@ -96,12 +96,12 @@ Tachometer tach4(RPM_INPUT_4, TRIGGER_PPR_DEFAULT, HIGH_SPEED);
 Temperature temp1(TEMP_INPUT_1);
 Temperature temp2(TEMP_INPUT_2);
 
-union D_Buff {byte D_Buff_byte[NUM_FLOATS * BYTES_PER_FLOAT]; float D_Buff_float[NUM_FLOATS];} D_Buff_Union;
-volatile byte I2C_Reg_Req_Num = 0;
-volatile byte I2C_Bytes_Req = 0;
-byte info_index = 0;
-byte register_index = 0;
-byte register_index_stop = 0;
+union D_Buff {uint8_t D_Buff_byte[NUM_FLOATS * BYTES_PER_FLOAT]; float D_Buff_float[NUM_FLOATS];} D_Buff_Union;
+volatile uint8_t I2C_Reg_Req_Num = 0;
+volatile uint8_t I2C_Bytes_Req = 0;
+uint8_t info_index = 0;
+uint8_t register_index = 0;
+uint8_t register_index_stop = 0;
 
 // Function prototypes
 void receiveEvent(size_t len);
@@ -126,7 +126,7 @@ void setup(){
 
 void loop(){
 
-unsigned long timer = millis();                         // Time in milliseconds of current loop
+uint32_t timer = millis();                         // Time in milliseconds of current loop
 
     if (( micros() - super_fast_loop_timer) >= 1000){
         super_fast_loop_timer = micros();

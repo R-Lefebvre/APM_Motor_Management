@@ -1,7 +1,7 @@
 #include <Temperature.h>
 #include <Arduino.h>
 
-Temperature::Temperature(int pin){
+Temperature::Temperature(uint8_t pin){
     pin_assignment = pin;
 }
 
