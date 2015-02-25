@@ -54,7 +54,6 @@ requires input of number of poles, and gear ratio.
 #define RPM_INPUT_4             9
 #define TEMP_INPUT_1            16
 #define TEMP_INPUT_2            17
-#define TRIGGER_PPR_DEFAULT     1
 
 #define D_BUFF_PPM_1            0
 #define D_BUFF_PPM_2            1
@@ -88,10 +87,10 @@ uint8_t     medium_loop_dt= 0 ;                 // Time since the last 50 Hz loo
 uint32_t    slow_loop_timer = 0;                // Time in milliseconds of the 10hz control loop
 uint32_t    super_slow_loop_timer = 0;          // Time in milliseconds of the 1hz control loop
 
-Tachometer tach1(RPM_INPUT_1, TRIGGER_PPR_DEFAULT, LOW_SPEED);
-Tachometer tach2(RPM_INPUT_2, TRIGGER_PPR_DEFAULT, LOW_SPEED);
-Tachometer tach3(RPM_INPUT_3, TRIGGER_PPR_DEFAULT, HIGH_SPEED);
-Tachometer tach4(RPM_INPUT_4, TRIGGER_PPR_DEFAULT, HIGH_SPEED);
+Tachometer tach1(RPM_INPUT_1, LOW_SPEED);
+Tachometer tach2(RPM_INPUT_2, LOW_SPEED);
+Tachometer tach3(RPM_INPUT_3, HIGH_SPEED);
+Tachometer tach4(RPM_INPUT_4, HIGH_SPEED);
 
 Temperature temp1(TEMP_INPUT_1);
 Temperature temp2(TEMP_INPUT_2);
