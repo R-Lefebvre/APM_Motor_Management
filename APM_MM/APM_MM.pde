@@ -51,7 +51,18 @@ requires input of number of poles, and gear ratio.
 #define RPM_INPUT_2             7
 #define RPM_INPUT_3             8
 #define RPM_INPUT_4             9
+#define TEMP_INPUT_1            16
+#define TEMP_INPUT_2            17
 #define TRIGGER_PPR_DEFAULT     1
+
+#define D_BUFF_PPM_1            0
+#define D_BUFF_PPM_2            1
+#define D_BUFF_PPM_3            2
+#define D_BUFF_PPM_4            3
+#define D_BUFF_TEMP_1           4
+#define D_BUFF_TEMP_2           5
+#define NUM_FLOATS              6
+#define BYTES_PER_FLOAT         4
 
 #define MM_I2C_SLAVE_ADDRESS    0x36
 #define FIRST_REG_ADDRESS       0x20
@@ -59,8 +70,9 @@ requires input of number of poles, and gear ratio.
 #define REQUEST_PPM_2           0x21
 #define REQUEST_PPM_3           0x22
 #define REQUEST_PPM_4           0x23
-#define BYTES_PER_FLOAT         4
-#define NUM_FLOATS              4
+#define REQUEST_TEMP_1          0x24
+#define REQUEST_TEMP_2          0x25
+
 
 bool LedBlinker = true;
 
@@ -80,7 +92,7 @@ Tachometer tach2(RPM_INPUT_2, TRIGGER_PPR_DEFAULT, LOW_SPEED);
 Tachometer tach3(RPM_INPUT_3, TRIGGER_PPR_DEFAULT, HIGH_SPEED);
 Tachometer tach4(RPM_INPUT_4, TRIGGER_PPR_DEFAULT, HIGH_SPEED);
 
-union RPM_tag {byte PPM_b[NUM_FLOATS * BYTES_PER_FLOAT]; float PPM_fval[NUM_FLOATS];} PPM_Union;
+union D_Buff {byte D_Buff_byte[NUM_FLOATS * BYTES_PER_FLOAT]; float D_Buff_float[NUM_FLOATS];} D_Buff_Union;
 volatile byte I2C_Reg_Req_Num = 0;
 volatile byte I2C_Bytes_Req = 0;
 byte info_index = 0;
@@ -166,10 +178,12 @@ void fastloop(){                    //100hz stuff goes here
 
 void mediumloop(){                  //50hz stuff goes here
 
-    PPM_Union.PPM_fval[0] = tach1.get_rpm();
-    PPM_Union.PPM_fval[1] = tach2.get_rpm();
-    PPM_Union.PPM_fval[2] = tach3.get_rpm();
-    PPM_Union.PPM_fval[3] = tach4.get_rpm();
+    D_Buff_Union.D_Buff_float[D_BUFF_PPM_1] = tach1.get_rpm();
+    D_Buff_Union.D_Buff_float[D_BUFF_PPM_2] = tach2.get_rpm();
+    D_Buff_Union.D_Buff_float[D_BUFF_PPM_3] = tach3.get_rpm();
+    D_Buff_Union.D_Buff_float[D_BUFF_PPM_4] = tach4.get_rpm();
+    D_Buff_Union.D_Buff_float[D_BUFF_TEMP_1] = 3.3 * analogRead(TEMP_INPUT_1)/1023;
+    D_Buff_Union.D_Buff_float[D_BUFF_TEMP_2] = 3.3 * analogRead(TEMP_INPUT_2)/1023;
 }
 
 void slowloop(){                    //10hz stuff goes here
@@ -226,7 +240,7 @@ void receiveEvent(size_t bytes)
 void requestEvent()
 {
      while(register_index < register_index_stop){
-        Wire.write(PPM_Union.PPM_b[register_index]);
+        Wire.write(D_Buff_Union.D_Buff_byte[register_index]);
         register_index++;
     }
 }
@@ -241,14 +255,18 @@ void serial_debug_init(){
 }
 
 void do_serial_debug(){
-    Serial.print ("PPM 1:");
-    Serial.print(PPM_Union.PPM_fval[0]);
-    Serial.print (" 2:");
-    Serial.print(PPM_Union.PPM_fval[1]);
-    Serial.print (" 3:");
-    Serial.print(PPM_Union.PPM_fval[2]);
-    Serial.print (" 4:");
-    Serial.println(PPM_Union.PPM_fval[3]);
+    Serial.print ("PPM 1: ");
+    Serial.print(D_Buff_Union.D_Buff_float[D_BUFF_PPM_1]);
+    Serial.print (" 2: ");
+    Serial.print(D_Buff_Union.D_Buff_float[D_BUFF_PPM_2]);
+    Serial.print (" 3: ");
+    Serial.print(D_Buff_Union.D_Buff_float[D_BUFF_PPM_3]);
+    Serial.print (" 4: ");
+    Serial.print(D_Buff_Union.D_Buff_float[D_BUFF_PPM_4]);
+    Serial.print (" Temp 1: ");
+    Serial.print (D_Buff_Union.D_Buff_float[D_BUFF_TEMP_1]);
+    Serial.print (" Temp 2: ");
+    Serial.println (D_Buff_Union.D_Buff_float[D_BUFF_TEMP_2]);
 }
 
 // Wrappers for ISR functions
