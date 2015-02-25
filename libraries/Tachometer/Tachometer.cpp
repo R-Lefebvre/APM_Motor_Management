@@ -33,7 +33,7 @@ void Tachometer::timer_overflow_handler(){
     trigger_time = 0;
 
     //and the next capture too
-    timing_overflow_trigger_skip == true;
+    timing_overflow_trigger_skip = true;
 }
 
 void Tachometer::check_pulses(unsigned long fl_timer){
