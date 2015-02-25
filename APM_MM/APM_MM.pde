@@ -232,10 +232,6 @@ void receiveEvent(size_t bytes)
     while( Wire.available() ){
         I2C_Reg_Req_Num = Wire.read();
         I2C_Bytes_Req = Wire.read();
-        Serial.print("Register: ");
-        Serial.println(I2C_Reg_Req_Num);
-        Serial.print("Bytes: ");
-        Serial.println(I2C_Bytes_Req);
     }
 
     info_index = I2C_Reg_Req_Num - FIRST_REG_ADDRESS;

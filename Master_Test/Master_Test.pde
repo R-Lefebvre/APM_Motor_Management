@@ -4,7 +4,7 @@
 #define ENABLED                 1
 #define DISABLED                0
 
-#define SERIAL_DEBUG            ENABLED
+#define SERIAL_DEBUG            DISABLED
 
 #define D_BUFF_PPM_1            0
 #define D_BUFF_PPM_2            1
