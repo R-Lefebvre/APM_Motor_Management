@@ -54,10 +54,13 @@ requires input of number of poles, and gear ratio.
 #define TRIGGER_PPR_DEFAULT     1
 
 #define MM_I2C_SLAVE_ADDRESS    0x36
+#define FIRST_REG_ADDRESS       0x20
 #define REQUEST_PPM_1           0x20
 #define REQUEST_PPM_2           0x21
 #define REQUEST_PPM_3           0x22
 #define REQUEST_PPM_4           0x23
+#define BYTES_PER_FLOAT         4
+#define NUM_FLOATS              4
 
 bool LedBlinker = true;
 
@@ -77,8 +80,9 @@ Tachometer tach2(RPM_INPUT_2, TRIGGER_PPR_DEFAULT, LOW_SPEED);
 Tachometer tach3(RPM_INPUT_3, TRIGGER_PPR_DEFAULT, HIGH_SPEED);
 Tachometer tach4(RPM_INPUT_4, TRIGGER_PPR_DEFAULT, HIGH_SPEED);
 
-union RPM_tag {byte RPM_b[16]; float RPM_fval[4];} PPM_Union;
+union RPM_tag {byte PPM_b[NUM_FLOATS * BYTES_PER_FLOAT]; float PPM_fval[NUM_FLOATS];} PPM_Union;
 volatile byte I2C_Reg_Req_Num = 0;
+volatile byte I2C_Bytes_Req = 0;
 byte info_index = 0;
 byte register_index = 0;
 byte register_index_stop = 0;
@@ -162,10 +166,10 @@ void fastloop(){                    //100hz stuff goes here
 
 void mediumloop(){                  //50hz stuff goes here
 
-    PPM_Union.RPM_fval[0] = tach1.get_rpm();
-    PPM_Union.RPM_fval[1] = tach2.get_rpm();
-    PPM_Union.RPM_fval[2] = tach3.get_rpm();
-    PPM_Union.RPM_fval[3] = tach4.get_rpm();
+    PPM_Union.PPM_fval[0] = tach1.get_rpm();
+    PPM_Union.PPM_fval[1] = tach2.get_rpm();
+    PPM_Union.PPM_fval[2] = tach3.get_rpm();
+    PPM_Union.PPM_fval[3] = tach4.get_rpm();
 }
 
 void slowloop(){                    //10hz stuff goes here
@@ -203,21 +207,26 @@ bool micros_overflow(){
     }
 }
 
-void receiveEvent(size_t len)
+void receiveEvent(size_t bytes)
 {
-    while(Wire.available()){
+    while( Wire.available() ){
         I2C_Reg_Req_Num = Wire.read();
+        I2C_Bytes_Req = Wire.read();
+        Serial.print("Register: ");
+        Serial.println(I2C_Reg_Req_Num);
+        Serial.print("Bytes: ");
+        Serial.println(I2C_Bytes_Req);
     }
 
-    info_index = I2C_Reg_Req_Num - 0x20;
-    register_index = info_index*4;
-    register_index_stop = register_index + 4;
+    info_index = I2C_Reg_Req_Num - FIRST_REG_ADDRESS;
+    register_index = info_index*BYTES_PER_FLOAT;
+    register_index_stop = register_index + I2C_Bytes_Req;
 }
 
 void requestEvent()
 {
      while(register_index < register_index_stop){
-        Wire.write(PPM_Union.RPM_b[register_index]);
+        Wire.write(PPM_Union.PPM_b[register_index]);
         register_index++;
     }
 }
@@ -233,13 +242,13 @@ void serial_debug_init(){
 
 void do_serial_debug(){
     Serial.print ("PPM 1:");
-    Serial.print(PPM_Union.RPM_fval[0]);
+    Serial.print(PPM_Union.PPM_fval[0]);
     Serial.print (" 2:");
-    Serial.print(PPM_Union.RPM_fval[1]);
+    Serial.print(PPM_Union.PPM_fval[1]);
     Serial.print (" 3:");
-    Serial.print(PPM_Union.RPM_fval[2]);
+    Serial.print(PPM_Union.PPM_fval[2]);
     Serial.print (" 4:");
-    Serial.println(PPM_Union.RPM_fval[3]);
+    Serial.println(PPM_Union.PPM_fval[3]);
 }
 
 // Wrappers for ISR functions
