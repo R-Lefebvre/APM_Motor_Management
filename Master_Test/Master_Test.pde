@@ -13,6 +13,8 @@
 #define REQUEST_PPM_3           0x22
 #define REQUEST_PPM_4           0x23
 
+#define PULSES_PER_REV          3
+
 bool    get_single_words = DISABLED;
 bool    have_I2C_data = false;                                  // flag used to signal we have data back from I2C
 byte    I2C_data_request = 0;                                   // indicates which piece of data we are seeking currently
@@ -60,9 +62,9 @@ void get_data_all_words(){
         Serial.print (" 2:");
         Serial.print (PPM_Union.PPM_fval[1]);
         Serial.print (" 3:");
-        Serial.print (PPM_Union.PPM_fval[2]);
+        Serial.print (PPM_Union.PPM_fval[2]/PULSES_PER_REV);
         Serial.print (" 4:");
-        Serial.print (PPM_Union.PPM_fval[3]);
+        Serial.print (PPM_Union.PPM_fval[3]/PULSES_PER_REV);
 #endif // SERIAL_DEBUG
         have_I2C_data = false;
     } else {
