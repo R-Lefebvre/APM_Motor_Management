@@ -4,7 +4,16 @@
 #define ENABLED                 1
 #define DISABLED                0
 
-#define SERIAL_DEBUG            ENABLED
+#define SERIAL_DEBUG            DISABLED
+
+#define D_BUFF_PPM_1            0
+#define D_BUFF_PPM_2            1
+#define D_BUFF_PPM_3            2
+#define D_BUFF_PPM_4            3
+#define D_BUFF_TEMP_1           4
+#define D_BUFF_TEMP_2           5
+#define NUM_FLOATS              6
+#define BYTES_PER_FLOAT         4
 
 #define MM_I2C_SLAVE_ADDRESS    0x36
 #define FIRST_REG_ADDRESS       0x20
@@ -12,15 +21,20 @@
 #define REQUEST_PPM_2           0x21
 #define REQUEST_PPM_3           0x22
 #define REQUEST_PPM_4           0x23
+#define REQUEST_TEMP_1          0x24
+#define REQUEST_TEMP_2          0x25
+
 
 #define PULSES_PER_REV          3
 
 bool    get_single_words = DISABLED;
 bool    have_I2C_data = false;                                  // flag used to signal we have data back from I2C
 byte    I2C_data_request = 0;                                   // indicates which piece of data we are seeking currently
-int     I2C_Reg_Num = 0;                                        // register of I2C Slave containing information we are seeking                                                 // PPM data returned from I2C Slave
-union   PPM_tag {byte PPM_b[16]; float PPM_fval[4];} PPM_Union; // Union to combine I2C bytes into float
+int     I2C_Reg_Num = 0;                                        // register of I2C Slave containing information we are seeking
 int     num_bytes_I2C = 0;                                      // Number of bytes to request from I2C
+
+// Data returned from I2C Slave
+union D_Buff {byte D_Buff_byte[NUM_FLOATS * BYTES_PER_FLOAT]; float D_Buff_float[NUM_FLOATS];} D_Buff_Union;
 
 int last_micros = 0;
 int elapsed_micros =0;
@@ -49,7 +63,7 @@ void request_I2C_data(){
     Wire.endTransmission();
     Wire.requestFrom(MM_I2C_SLAVE_ADDRESS,num_bytes_I2C);
     for (int i = 0; i < num_bytes_I2C; i++){
-        PPM_Union.PPM_b[i] = Wire.read();                   // receive a byte as character
+        D_Buff_Union.D_Buff_byte[i] = Wire.read();                   // receive a byte as character
     }
     have_I2C_data = true;
 }
@@ -58,24 +72,28 @@ void get_data_all_words(){
     if (have_I2C_data){
 #if SERIAL_DEBUG == ENABLED
         Serial.print ("PPM 1:");
-        Serial.print (PPM_Union.PPM_fval[0]);
+        Serial.print (D_Buff_Union.D_Buff_float[D_BUFF_PPM_1]);
         Serial.print (" 2:");
-        Serial.print (PPM_Union.PPM_fval[1]);
+        Serial.print (D_Buff_Union.D_Buff_float[D_BUFF_PPM_2]);
         Serial.print (" 3:");
-        Serial.print (PPM_Union.PPM_fval[2]/PULSES_PER_REV);
+        Serial.print (D_Buff_Union.D_Buff_float[D_BUFF_PPM_3]/PULSES_PER_REV);
         Serial.print (" 4:");
-        Serial.print (PPM_Union.PPM_fval[3]/PULSES_PER_REV);
+        Serial.print (D_Buff_Union.D_Buff_float[D_BUFF_PPM_4]/PULSES_PER_REV);
+        Serial.print (" Temp 1:");
+        Serial.print (D_Buff_Union.D_Buff_float[D_BUFF_TEMP_1]);
+        Serial.print (" Temp 2:");
+        Serial.print (D_Buff_Union.D_Buff_float[D_BUFF_TEMP_2]);
 #endif // SERIAL_DEBUG
         have_I2C_data = false;
     } else {
         elapsed_micros = micros() - last_micros;
         last_micros = micros();
 #if SERIAL_DEBUG == ENABLED
-        Serial.print("Cycle Time: ");
+        Serial.print(" Cycle Time: ");
 #endif // SERIAL_DEBUG
         Serial.println(elapsed_micros);
         I2C_Reg_Num = FIRST_REG_ADDRESS;
-        num_bytes_I2C = 16;
+        num_bytes_I2C = NUM_FLOATS * BYTES_PER_FLOAT;
         request_I2C_data();
     }
 }
@@ -86,7 +104,7 @@ void get_data_single_words(){
 #if SERIAL_DEBUG == ENABLED
         Serial.print (I2C_data_request);
         Serial.print (": ");
-        Serial.print (PPM_Union.PPM_fval[0]);
+        Serial.print (D_Buff_Union.D_Buff_float[0]);
         Serial.print (" ");
 #endif // SERIAL_DEBUG
         I2C_data_request++;
@@ -108,6 +126,12 @@ void get_data_single_words(){
             case 4:
                 I2C_Reg_Num = REQUEST_PPM_4;
                 break;
+            case 5:
+                I2C_Reg_Num = REQUEST_TEMP_1;
+                break;
+            case 6:
+                I2C_Reg_Num = REQUEST_TEMP_2;
+                break;
             default:
                 elapsed_micros = micros() - last_micros;
                 last_micros = micros();
@@ -116,7 +140,7 @@ void get_data_single_words(){
 #endif // SERIAL_DEBUG
                 Serial.println(elapsed_micros);
 #if SERIAL_DEBUG == ENABLED
-                Serial.print ("PPM ");
+                Serial.print ("Data_f ");
 #endif // SERIAL_DEBUG
                 I2C_data_request = 1;
                 num_bytes_I2C = 4;
