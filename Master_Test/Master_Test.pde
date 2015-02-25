@@ -4,7 +4,7 @@
 #define ENABLED                 1
 #define DISABLED                0
 
-#define SERIAL_DEBUG            DISABLED
+#define SERIAL_DEBUG            ENABLED
 
 #define MM_I2C_SLAVE_ADDRESS    0x36
 #define REQUEST_PPM_1           0x20
@@ -56,14 +56,17 @@ void loop()
                 I2C_Reg_Num = REQUEST_PPM_4;
                 break;
             default:
+                elapsed_micros = micros() - last_micros;
+                last_micros = micros();
 #if SERIAL_DEBUG == ENABLED
-                Serial.println (" ");   
+                Serial.print("Cycle Time: ");
+#endif // SERIAL_DEBUG
+                Serial.println(elapsed_micros);
+#if SERIAL_DEBUG == ENABLED
+                Serial.println (" ");
                 Serial.print ("PPM ");
 #endif // SERIAL_DEBUG
                 I2C_data_request = 1;
-                elapsed_micros = micros() - last_micros;
-                last_micros = micros();
-                Serial.println(elapsed_micros);
                 return;
         }
         request_I2C_data();
