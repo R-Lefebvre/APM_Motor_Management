@@ -37,6 +37,7 @@ requires input of number of poles, and gear ratio.
 */
 
 #include <Tachometer.h>         //Tachometer class definition
+#include <Temperature.h>        //Temperature sensor class definition
 
 #define ENABLED                 1
 #define DISABLED                0
@@ -91,6 +92,9 @@ Tachometer tach1(RPM_INPUT_1, TRIGGER_PPR_DEFAULT, LOW_SPEED);
 Tachometer tach2(RPM_INPUT_2, TRIGGER_PPR_DEFAULT, LOW_SPEED);
 Tachometer tach3(RPM_INPUT_3, TRIGGER_PPR_DEFAULT, HIGH_SPEED);
 Tachometer tach4(RPM_INPUT_4, TRIGGER_PPR_DEFAULT, HIGH_SPEED);
+
+Temperature temp1(TEMP_INPUT_1);
+Temperature temp2(TEMP_INPUT_2);
 
 union D_Buff {byte D_Buff_byte[NUM_FLOATS * BYTES_PER_FLOAT]; float D_Buff_float[NUM_FLOATS];} D_Buff_Union;
 volatile byte I2C_Reg_Req_Num = 0;
@@ -174,6 +178,8 @@ void fastloop(){                    //100hz stuff goes here
     tach2.count_pulses();
     tach3.count_pulses();
     tach4.count_pulses();
+    temp1.take_reading();
+    temp2.take_reading();
 }
 
 void mediumloop(){                  //50hz stuff goes here
@@ -182,12 +188,12 @@ void mediumloop(){                  //50hz stuff goes here
     D_Buff_Union.D_Buff_float[D_BUFF_PPM_2] = tach2.get_rpm();
     D_Buff_Union.D_Buff_float[D_BUFF_PPM_3] = tach3.get_rpm();
     D_Buff_Union.D_Buff_float[D_BUFF_PPM_4] = tach4.get_rpm();
-    D_Buff_Union.D_Buff_float[D_BUFF_TEMP_1] = 3.3 * analogRead(TEMP_INPUT_1)/1023;
-    D_Buff_Union.D_Buff_float[D_BUFF_TEMP_2] = 3.3 * analogRead(TEMP_INPUT_2)/1023;
 }
 
 void slowloop(){                    //10hz stuff goes here
 
+    D_Buff_Union.D_Buff_float[D_BUFF_TEMP_1] = temp1.get_temp_V();
+    D_Buff_Union.D_Buff_float[D_BUFF_TEMP_2] = temp2.get_temp_V();
 }
 
 void superslowloop(){               //1hz stuff goes here
