@@ -100,6 +100,7 @@ volatile uint8_t I2C_Reg_Req_Num = 0;
 volatile uint8_t I2C_Bytes_Req = 0;
 uint8_t info_index = 0;
 uint8_t register_index = 0;
+uint8_t register_index_perm = 0;
 uint8_t register_index_stop = 0;
 
 // Function prototypes
@@ -235,6 +236,7 @@ void receiveEvent(size_t bytes)
 
     info_index = I2C_Reg_Req_Num - FIRST_REG_ADDRESS;
     register_index = info_index*BYTES_PER_FLOAT;
+	register_index_perm = register_index;
     register_index_stop = register_index + I2C_Bytes_Req;
 }
 
@@ -268,6 +270,19 @@ void do_serial_debug(){
     Serial.print (D_Buff_Union.D_Buff_float[D_BUFF_TEMP_1]);
     Serial.print (" Temp 2: ");
     Serial.println (D_Buff_Union.D_Buff_float[D_BUFF_TEMP_2]);
+
+    Serial.print ("Received: ");
+    Serial.print (I2C_Reg_Req_Num);
+    Serial.print (" ");
+    Serial.println (I2C_Bytes_Req);
+
+    Serial.print ("Info Index: ");
+    Serial.print (info_index);
+    Serial.print (" Register Index: ");
+    Serial.print (register_index_perm);
+    Serial.print (" Stop Index: ");
+    Serial.println (register_index_stop);
+    Serial.println (" ");
 }
 
 // Wrappers for ISR functions
